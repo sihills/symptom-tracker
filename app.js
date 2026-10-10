@@ -2,7 +2,12 @@ const DEFAULT_SYMPTOMS=['Stress','Tiredness','Headache','Back ache','Sinus','Ast
 const ICONS={'Stress':'😵‍💫','Tiredness':'💤','Headache':'🤕','Back ache':'🧍','Sinus':'🤧','Asthma':'🫁','Nausea':'🤢','Anxiety':'😟','Period pains':'🌸','Faint':'💫'};
 const KEY='symptomTrackerRecordsV1', SETTINGS='symptomTrackerSettingsV1';
 let records=JSON.parse(localStorage.getItem(KEY)||'[]');let settings=JSON.parse(localStorage.getItem(SETTINGS)||'null')||{symptoms:DEFAULT_SYMPTOMS.map(name=>({name,enabled:true}))};
-const RENAME={'Stress level':'Stress','Face ache / blocked':'Sinus'}; settings.symptoms=settings.symptoms.filter(x=>!['Work stress','Relationship stress'].includes(x.name)).map(x=>({...x,name:RENAME[x.name]||x.name})); DEFAULT_SYMPTOMS.forEach(name=>{if(!settings.symptoms.some(x=>x.name===name))settings.symptoms.push({name,enabled:true})}); records=records.map(r=>r.category==='Symptom'&&RENAME[r.item]?{...r,item:RENAME[r.item]}:r); localStorage.setItem(KEY,JSON.stringify(records));localStorage.setItem(SETTINGS,JSON.stringify(settings));
+const RENAME={'Stress level':'Stress','Face ache / blocked':'Sinus','Fainting':'Faint'};
+records.forEach(r=>{if(RENAME[r.item])r.item=RENAME[r.item]});
+if(settings&&Array.isArray(settings.symptoms)){
+  settings.symptoms=settings.symptoms.map(s=>({...s,name:RENAME[s.name]||s.name}));
+  settings.symptoms=settings.symptoms.filter((s,i,a)=>a.findIndex(x=>x.name===s.name)===i);
+} settings.symptoms=settings.symptoms.filter(x=>!['Work stress','Relationship stress'].includes(x.name)).map(x=>({...x,name:RENAME[x.name]||x.name})); DEFAULT_SYMPTOMS.forEach(name=>{if(!settings.symptoms.some(x=>x.name===name))settings.symptoms.push({name,enabled:true})}); records=records.map(r=>r.category==='Symptom'&&RENAME[r.item]?{...r,item:RENAME[r.item]}:r); localStorage.setItem(KEY,JSON.stringify(records));localStorage.setItem(SETTINGS,JSON.stringify(settings));
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 function persist(){localStorage.setItem(KEY,JSON.stringify(records));localStorage.setItem(SETTINGS,JSON.stringify(settings));renderAll()}
 function stamp(){let d=new Date(),off=d.getTimezoneOffset();return new Date(d.getTime()-off*60000).toISOString().slice(0,16)} function nice(d){return new Date(d).toLocaleString([], {dateStyle:'medium',timeStyle:'short'})}
