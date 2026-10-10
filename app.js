@@ -1,5 +1,20 @@
 const DEFAULT_SYMPTOMS=['Stress','Tiredness','Headache','Back ache','Sinus','Asthma','Nausea','Anxiety','Period pains','Faint'];
 const ICONS={'Stress':'😵‍💫','Tiredness':'💤','Headache':'🤕','Back ache':'🧍','Sinus':'🤧','Asthma':'🫁','Nausea':'🤢','Anxiety':'😟','Period pains':'🌸','Faint':'💫'};
+const ICON_STYLES={
+  'Stress':['#f7d8df','#a64f6e'],
+  'Tiredness':['#e8dcf6','#6f5c8f'],
+  'Headache':['#ffe1db','#a75262'],
+  'Back ache':['#dfeadf','#50755a'],
+  'Sinus':['#dde7dc','#536652'],
+  'Asthma':['#dce6f8','#4e678f'],
+  'Nausea':['#fee5d8','#9a5f43'],
+  'Anxiety':['#eddcf4','#7b5486'],
+  'Period pains':['#f9d9e5','#a14e6c'],
+  'Faint':['#f9e4c8','#966245']
+};
+const EXTRA_PALETTE=[['#f7d8df','#a64f6e'],['#e8dcf6','#6f5c8f'],['#dfeadf','#50755a'],['#dce6f8','#4e678f'],['#fee5d8','#9a5f43'],['#f9d9e5','#a14e6c']];
+function colorsFor(name){ if(ICON_STYLES[name]) return ICON_STYLES[name]; let h=[...name].reduce((a,c)=>a+c.charCodeAt(0),0); return EXTRA_PALETTE[h%EXTRA_PALETTE.length]; }
+
 const KEY='symptomTrackerRecordsV1', SETTINGS='symptomTrackerSettingsV1';
 let records=JSON.parse(localStorage.getItem(KEY)||'[]');let settings=JSON.parse(localStorage.getItem(SETTINGS)||'null')||{symptoms:DEFAULT_SYMPTOMS.map(name=>({name,enabled:true}))};
 const RENAME={'Stress level':'Stress','Face ache / blocked':'Sinus','Fainting':'Faint'};
@@ -21,7 +36,7 @@ function eventModal(type){if(type==='illness')return severityEventModal('Illness
 function generic(title,fields,get){show(`<h2>${title}</h2>${fields}<label class="field">Time<input id="mTime" type="datetime-local" value="${stamp()}"></label><label class="field">Additional note (optional)<textarea id="mNote"></textarea></label>`,()=>{let x=get();add({category:title,...x,timestamp:$('#mTime').value,notes:x.notes||$('#mNote').value});return true})}
 function show(html,onSave){$('#modalBody').innerHTML=html;$('#modal').showModal();$('#cancelModal').onclick=()=>$('#modal').close();$('#saveModal').onclick=e=>{e.preventDefault();if(onSave()!==false)$('#modal').close()}}
 $$('[data-event]').forEach(b=>b.onclick=()=>eventModal(b.dataset.event));
-function renderSymptoms(){$('#symptomGrid').innerHTML=settings.symptoms.filter(x=>x.enabled).map(x=>`<button class="symptom" data-sym="${x.name}"><span class="symptom-icon">${ICONS[x.name]||'●'}</span><span>${x.name}</span></button>`).join('');$$('[data-sym]').forEach(b=>b.onclick=()=>symptomModal(b.dataset.sym))}
+function renderSymptoms(){$('#symptomGrid').innerHTML=settings.symptoms.filter(x=>x.enabled).map(x=>{let [bg,fg]=colorsFor(x.name);return `<button class="symptom" data-sym="${x.name}" style="--icon-bg:${bg};--icon-fg:${fg}"><span class="symptom-icon-wrap"><span class="symptom-icon">${ICONS[x.name]||'✨'}</span></span><span class="symptom-name">${x.name}</span></button>`}).join('');$$('[data-sym]').forEach(b=>b.onclick=()=>symptomModal(b.dataset.sym))}
 function entry(r,timeline=false){return `<div class="entry ${timeline?'timeline-entry':''}"><div class="entry-actions">${r.category==='Symptom'?``:''}<button class="edit" data-edit="${r.id}">Edit</button><button class="delete" data-del="${r.id}">Delete</button></div><strong>${r.item}${r.value!==''&&r.value!=null?' — '+r.value+(r.unit||''):''}</strong><small>${nice(r.timestamp)} · ${r.category}</small>${r.notes?`<div>${r.notes}</div>`:''}</div>`}
 function editRecord(r){if(r.category==='Symptom'){let sev=+r.value;show(`<div class="modal-title"><span class="big-icon">${ICONS[r.item]||'●'}</span><div><h2>${r.item}</h2><p class="muted">Edit severity</p></div></div><div class="range-guide"><span><b>0</b> None</span><span><b>1–3</b> Mild</span><span><b>4–6</b> Moderate</span><span><b>7–9</b> Severe</span><span><b>10</b> Worst</span></div><div class="severity">${[0,1,2,3,4,5,6,7,8,9,10].map(n=>`<button type="button" data-sev="${n}" class="${sev===n?'selected':''}">${n}</button>`).join('')}</div><label class="field">Time<input id="mTime" type="datetime-local" value="${r.timestamp}"></label><label class="field">Note (optional)<textarea id="mNote">${r.notes||''}</textarea></label>`,()=>{r.value=sev;r.timestamp=$('#mTime').value;r.notes=$('#mNote').value;persist();return true});$$('[data-sev]').forEach(b=>b.onclick=()=>{$$('[data-sev]').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');sev=+b.dataset.sev});return}if(r.category==='Illness')return severityEventModal('Illness','🤒',r);let value=r.value??'',notes=r.notes??'';show(`<h2>Edit ${r.category}</h2><label class="field">${r.category==='Note'?'Note':'Value'}${r.category==='Note'?`<textarea id="editVal">${notes}</textarea>`:`<input id="editVal" value="${value}">`}</label><label class="field">Time<input id="mTime" type="datetime-local" value="${r.timestamp}"></label>${r.category==='Note'?'':`<label class="field">Note (optional)<textarea id="mNote">${notes}</textarea></label>`}`,()=>{if(r.category==='Note')r.notes=$('#editVal').value;else{r.value=$('#editVal').value;r.notes=$('#mNote').value}r.timestamp=$('#mTime').value;persist();return true})}
 function bindEntryActions(){ $$('[data-del]').forEach(b=>b.onclick=()=>{if(confirm('Delete this entry?')){records=records.filter(r=>r.id!==b.dataset.del);persist()}});$$('[data-edit]').forEach(b=>b.onclick=()=>{let r=records.find(x=>x.id===b.dataset.edit);if(r)editRecord(r)})}
